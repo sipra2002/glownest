@@ -42,7 +42,7 @@ If you prefer setting up the Web Service manually:
    - **Runtime:** `Node`
    - **Build Command:**
      ```bash
-     npm install && npm run render:build
+     npm install --include=dev && npm run render:build
      ```
    - **Start Command:**
      ```bash
