@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: glownest
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run render:build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_IaDWd2h1ECwN@ep-patient-frost-azlyyi55-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ANALYSIS_PROVIDER
+        value: demo
+      - key: STORAGE_DRIVER
+        value: local
+

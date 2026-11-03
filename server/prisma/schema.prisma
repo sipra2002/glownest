@@ -1,0 +1,317 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  role          String         @default("user") // "user" | "admin"
+  emailVerified Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  skinProfile   SkinProfile?
+  consents      Consent[]
+  analyses      SkinAnalysis[]
+  images        UploadedImage[]
+  routines      Routine[]
+  cart          Cart?
+  wishlist      WishlistItem[]
+  orders        Order[]
+  reviews       Review[]
+  reminders     Reminder[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+}
+
+model SkinProfile {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skinType   String   // "oily" | "dry" | "combination" | "normal" | "sensitive"
+  concerns   String   // JSON string of string[]
+  allergies  String?  // JSON string of string[]
+  updatedAt  DateTime @updatedAt
+}
+
+model Consent {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // "image_processing" | "terms" | "privacy"
+  version   String    @default("1.0")
+  grantedAt DateTime  @default(now())
+  revokedAt DateTime?
+  ip        String?
+}
+
+model UploadedImage {
+  id          String        @id @default(uuid())
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  storageKey  String
+  filename    String
+  mime        String
+  sizeBytes   Int
+  sha256      String
+  retention   String        @default("delete_after_analysis") // "delete_after_analysis" | "keep_for_progress"
+  expiresAt   DateTime?
+  createdAt   DateTime      @default(now())
+  analysis    SkinAnalysis?
+}
+
+model SkinAnalysis {
+  id                String          @id @default(uuid())
+  userId            String?
+  user              User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  source            String          @default("image") // "image" | "quiz"
+  mode              String          @default("demo")  // "demo" | "real"
+  provider          String          @default("demo")
+  imageId           String?         @unique
+  image             UploadedImage?  @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  selectedConcerns  String          // JSON array of strings
+  skinTypeEstimate  String          // "oily" | "dry" | "combination" | "normal" | "sensitive"
+  summary           String
+  disclaimerVersion String          @default("1.0")
+  status            String          @default("completed") // "pending" | "completed" | "failed"
+  createdAt         DateTime        @default(now())
+  scores            AnalysisScore[]
+  quizResponse      QuizResponse?
+  routine           Routine?
+}
+
+model AnalysisScore {
+  id         String       @id @default(uuid())
+  analysisId String
+  analysis   SkinAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  concern    String       // "acne" | "pigmentation" | "texture" | "pores" | "redness" | "dryness" | "oiliness"
+  score      Int          // 0 - 100
+  severity   String       // "mild" | "moderate" | "high"
+  note       String?
+}
+
+model QuizResponse {
+  id         String       @id @default(uuid())
+  analysisId String       @unique
+  analysis   SkinAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  answers    String       // JSON encoded user answers
+  createdAt  DateTime     @default(now())
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  products    Product[]
+}
+
+model Product {
+  id                 String              @id @default(uuid())
+  sku                String              @unique
+  name               String
+  slug               String              @unique
+  brand              String              @default("GlowNest Lab")
+  categoryId         String
+  category           Category            @relation(fields: [categoryId], references: [id])
+  description        String
+  howToUse           String
+  priceCents         Int                 // In cents or paise (₹100 = 10000)
+  currency           String              @default("INR")
+  imageUrls          String              // JSON array of image URLs
+  suitableSkinTypes  String              // JSON array of skin types
+  targetConcerns     String              // JSON array of targeted concerns
+  ratingAvg          Float               @default(4.8)
+  ratingCount        Int                 @default(0)
+  stock              Int                 @default(100)
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  ingredients        ProductIngredient[]
+  routineSteps       RoutineStep[]
+  cartItems          CartItem[]
+  wishlistItems      WishlistItem[]
+  reviews            Review[]
+}
+
+model ProductIngredient {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  isKey     Boolean  @default(false)
+  benefit   String?
+}
+
+model Routine {
+  id         String        @id @default(uuid())
+  userId     String?
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  analysisId String?       @unique
+  analysis   SkinAnalysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  title      String        @default("My Personalized Routine")
+  createdAt  DateTime      @default(now())
+  steps      RoutineStep[]
+}
+
+model RoutineStep {
+  id           String   @id @default(uuid())
+  routineId    String
+  routine      Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  period       String   // "AM" | "PM"
+  stepOrder    Int
+  stepType     String   // "cleanser" | "toner" | "serum" | "moisturizer" | "sunscreen"
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  instructions String?
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model WishlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status          String      @default("confirmed") // "confirmed" | "processing" | "shipped" | "delivered"
+  subtotalCents   Int
+  shippingCents   Int         @default(0)
+  totalCents      Int
+  currency        String      @default("INR")
+  paymentMode     String      @default("demo")
+  shippingAddress String      // JSON string of address
+  idempotencyKey  String?     @unique
+  createdAt       DateTime    @default(now())
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  productName String
+  priceCents  Int
+  quantity    Int
+}
+
+model Review {
+  id               String   @id @default(uuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating           Int      // 1 to 5
+  title            String
+  body             String
+  verifiedPurchase Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@unique([productId, userId])
+}
+
+model ArticleCategory {
+  id       String    @id @default(uuid())
+  name     String
+  slug     String    @unique
+  articles Article[]
+}
+
+model Article {
+  id              String          @id @default(uuid())
+  slug            String          @unique
+  title           String
+  excerpt         String
+  content         String          // Markdown content
+  coverImage      String
+  author          String          @default("GlowNest Editorial")
+  readTimeMinutes Int             @default(5)
+  categoryId      String
+  category        ArticleCategory @relation(fields: [categoryId], references: [id])
+  publishedAt     DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+}
+
+model Testimonial {
+  id         String   @id @default(uuid())
+  name       String
+  quote      String
+  rating     Int      @default(5)
+  avatar     String
+  skinType   String   // "Oily & Acne-Prone", "Dry & Sensitive", etc.
+  concern    String
+  isFeatured Boolean  @default(true)
+}
+
+model Reminder {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routinePeriod String   // "AM" | "PM"
+  timeLocal     String   // "08:00"
+  timezone      String   @default("Asia/Kolkata")
+  daysOfWeek    String   @default("[1,2,3,4,5,6,7]") // JSON array
+  channel       String   @default("in_app") // "in_app" | "email"
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    String   @default("open") // "open" | "in_progress" | "resolved"
+  createdAt DateTime @default(now())
+}
+

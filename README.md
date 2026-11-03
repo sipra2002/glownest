@@ -129,6 +129,17 @@ glownest2/
 
 ---
 
+## 🌐 Deployment to Render
+
+GlowNest is fully prepared for one-click deployment on Render as a unified full-stack web service:
+- Build command: `npm install && npm run render:build`
+- Start command: `npm start`
+- Health check path: `/api/health`
+
+See [DEPLOY_RENDER.md](DEPLOY_RENDER.md) for full step-by-step instructions using either **Render Blueprints (`render.yaml`)** or manual web service setup.
+
+---
+
 ## ⚖️ Legal & Medical Disclaimer
 GlowNest assessments are **cosmetic evaluations only and never constitute medical diagnoses**. GlowNest does not detect or diagnose skin diseases. Users experiencing medical symptoms should consult a board-certified dermatologist.
 

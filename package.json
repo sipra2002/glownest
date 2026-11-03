@@ -1,0 +1,25 @@
+{
+  "name": "glownest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GlowNest - AI-Powered Skincare & Beauty Platform",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"server,client\" -c \"blue,magenta\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "build": "npm run build --workspace=server && npm run build --workspace=client",
+    "render:build": "npm run prisma:generate --workspace=server && npm run build",
+    "start": "node server/dist/index.js",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "prisma:generate": "npm run prisma:generate --workspace=server",
+    "prisma:push": "npm run prisma:push --workspace=server",
+    "seed": "npm run seed --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
